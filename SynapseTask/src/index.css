@@ -1,68 +1,72 @@
+@import "tailwindcss";
+
+/* Custom CSS Variables for theming */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --color-primary: theme(colors.indigo.600);
+  --color-primary-hover: theme(colors.indigo.700);
+  --color-secondary: theme(colors.violet.600);
+  --color-success: theme(colors.emerald.500);
+  --color-warning: theme(colors.amber.500);
+  --color-danger: theme(colors.red.500);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Dark mode overrides */
+.dark {
+  --color-primary: theme(colors.indigo.400);
+  --color-primary-hover: theme(colors.indigo.500);
 }
 
+/* Base styles */
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  @apply bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100;
+  @apply transition-colors duration-200;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-600 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-500;
+}
+
+/* Focus ring styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+  @apply dark:focus:ring-indigo-400 dark:focus:ring-offset-slate-900;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-200;
+  @apply hover:shadow-md hover:-translate-y-0.5;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-indigo-600 to-violet-600;
+  @apply dark:from-indigo-400 dark:to-violet-400;
+}
+
+/* Drag and drop styles */
+.dragging {
+  @apply opacity-50 scale-105 rotate-2;
+  @apply shadow-xl z-50;
+}
+
+.drop-target {
+  @apply ring-2 ring-indigo-500;
+  outline: 2px dashed theme(colors.indigo.500);
 }
