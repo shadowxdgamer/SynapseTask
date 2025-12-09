@@ -64,7 +64,7 @@ export function MindMap() {
     );
     
     // Dynamic spacing based on task count - increased for more spacing
-    const statusRadius = Math.max(220, Math.min(320, 200 + maxTasksPerStatus * 4));
+    const statusRadius = Math.max(280, Math.min(400, 260 + maxTasksPerStatus * 5));
     
     // Status hub positions: Done at top, Todo bottom-left, In Progress bottom-right
     const statusAngles: Record<TaskStatus, number> = {
