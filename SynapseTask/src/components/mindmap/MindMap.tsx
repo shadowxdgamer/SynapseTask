@@ -63,8 +63,8 @@ export function MindMap() {
       tasksByStatus.done.length
     );
     
-    // Dynamic spacing based on task count - increased for more spacing
-    const statusRadius = Math.max(280, Math.min(400, 260 + maxTasksPerStatus * 5));
+    // Base radius for status hubs from center
+    const baseStatusRadius = 280;
     
     // Status hub positions: Done at top, Todo bottom-left, In Progress bottom-right
     const statusAngles: Record<TaskStatus, number> = {
@@ -80,8 +80,15 @@ export function MindMap() {
 
     (['todo', 'inprogress', 'done'] as TaskStatus[]).forEach((status) => {
       const angle = statusAngles[status];
-      const x = centerX + Math.cos(angle) * statusRadius;
-      const y = centerY + Math.sin(angle) * statusRadius;
+      const statusTasks = tasksByStatus[status];
+      const taskCount = statusTasks.length;
+      
+      // Dynamic radius based on this status's task count
+      // More tasks = push the status hub further from center
+      const dynamicStatusRadius = baseStatusRadius + Math.min(taskCount * 8, 200);
+      
+      const x = centerX + Math.cos(angle) * dynamicStatusRadius;
+      const y = centerY + Math.sin(angle) * dynamicStatusRadius;
       pos.set(`status-${status}`, { x, y });
       
       conn.push({
@@ -89,9 +96,6 @@ export function MindMap() {
         to: { x, y },
         color: statusConfig[status].color,
       });
-
-      const statusTasks = tasksByStatus[status];
-      const taskCount = statusTasks.length;
       
       if (taskCount === 0) return;
 
