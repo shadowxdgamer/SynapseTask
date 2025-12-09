@@ -69,19 +69,7 @@ export function LofiPlayer() {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-      {/* Hidden YouTube iframe - always rendered when playing so music continues */}
-      {currentStream && isPlaying && getYouTubeId(currentStream.url) && (
-        <iframe
-          width="0"
-          height="0"
-          src={`https://www.youtube.com/embed/${getYouTubeId(currentStream.url)}?autoplay=1&loop=1`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          className="absolute -left-[9999px]"
-          style={{ position: 'absolute', left: '-9999px' }}
-        />
-      )}
-
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative">
       {/* Header */}
       <div 
         className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white cursor-pointer"
@@ -106,9 +94,28 @@ export function LofiPlayer() {
         </div>
       </div>
 
+      {/* Single YouTube iframe - always rendered when playing, visibility changes based on minimized state */}
+      {currentStream && isPlaying && getYouTubeId(currentStream.url) && (
+        <div 
+          className={`transition-all duration-300 ${
+            isMinimized 
+              ? 'h-0 w-0 overflow-hidden absolute -left-[9999px]' 
+              : 'mx-4 mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <iframe
+            width="100%"
+            height={isMinimized ? '0' : '120'}
+            src={`https://www.youtube.com/embed/${getYouTubeId(currentStream.url)}?autoplay=1&loop=1&controls=1&modestbranding=1&rel=0&vq=small`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            className="border-0"
+          />
+        </div>
+      )}
+
       {/* Expanded content */}
       {!isMinimized && (
-        <div className="p-4">
+        <div className="p-4 pt-2">
           {/* Stream selector */}
           <div className="space-y-2 mb-4 max-h-40 overflow-y-auto custom-scrollbar">
             {streams.map((stream) => (

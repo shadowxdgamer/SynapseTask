@@ -64,13 +64,16 @@ function App() {
               {view === 'mindmap' && <MindMap />}
             </div>
             
-            {/* Widgets panel - slides over content */}
+            {/* Widgets panel - slides over content with curved top */}
             <div 
-              className={`absolute top-0 right-0 h-full w-80 transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-sm z-50 shadow-xl ${showWidgets ? 'translate-x-0' : 'translate-x-full'}`}
+              className={`absolute top-0 right-0 h-full w-80 transition-transform duration-300 ease-in-out z-50 ${showWidgets ? 'translate-x-0' : 'translate-x-full'}`}
             >
-              <div className="w-80 p-4 space-y-4 overflow-y-auto h-full custom-scrollbar">
-                <PomodoroTimer />
-                <LofiPlayer />
+              {/* Main panel content with curved top-left */}
+              <div className="h-full w-full bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-xl rounded-tl-[3rem] border-l border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="w-80 p-4 pt-8 space-y-4 overflow-y-auto h-full custom-scrollbar">
+                  <PomodoroTimer />
+                  <LofiPlayer />
+                </div>
               </div>
             </div>
           </div>
