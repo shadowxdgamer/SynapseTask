@@ -50,15 +50,27 @@ export function MindMap() {
     };
   }, [tasks]);
 
-  // Calculate node positions - status-centric layout
+  // Calculate node positions - status-centric layout optimized for many tasks
   const { positions, connections } = useMemo(() => {
-    const centerX = 450;
-    const centerY = 300;
-    const statusRadius = 200;
+    const centerX = 900;
+    const centerY = 700;
+    
+    // Calculate total tasks to determine layout strategy
+    const totalTasks = tasks.length;
+    const maxTasksPerStatus = Math.max(
+      tasksByStatus.todo.length,
+      tasksByStatus.inprogress.length,
+      tasksByStatus.done.length
+    );
+    
+    // Dynamic spacing based on task count - increased for more spacing
+    const statusRadius = Math.max(220, Math.min(320, 200 + maxTasksPerStatus * 4));
+    
+    // Status hub positions: Done at top, Todo bottom-left, In Progress bottom-right
     const statusAngles: Record<TaskStatus, number> = {
-      todo: -Math.PI / 2 - Math.PI / 3,
-      inprogress: -Math.PI / 2,
-      done: -Math.PI / 2 + Math.PI / 3,
+      done: -Math.PI / 2,              // Top (12 o'clock)
+      todo: Math.PI / 2 + Math.PI / 3, // Bottom-left (7 o'clock)
+      inprogress: Math.PI / 2 - Math.PI / 3, // Bottom-right (5 o'clock)
     };
 
     const pos: Map<string, NodePosition> = new Map();
@@ -79,14 +91,40 @@ export function MindMap() {
       });
 
       const statusTasks = tasksByStatus[status];
-      const taskRadius = 100 + Math.min(statusTasks.length * 5, 50);
+      const taskCount = statusTasks.length;
+      
+      if (taskCount === 0) return;
+
+      // For many tasks, use multiple rings with more spacing
+      const maxTasksPerRing = 10;
+      const ringCount = Math.ceil(taskCount / maxTasksPerRing);
+      const baseRadius = 120; // Increased base radius for more spacing from status hub
+      const ringSpacing = 90; // Increased ring spacing
       
       statusTasks.forEach((task, i) => {
-        const spreadAngle = Math.PI * 0.8;
+        // Determine which ring this task belongs to
+        const ringIndex = Math.floor(i / maxTasksPerRing);
+        const positionInRing = i % maxTasksPerRing;
+        const tasksInThisRing = Math.min(maxTasksPerRing, taskCount - ringIndex * maxTasksPerRing);
+        
+        // Calculate radius for this ring
+        const taskRadius = baseRadius + ringIndex * ringSpacing;
+        
+        // Calculate angle spread - wider spread for better spacing
+        const spreadAngle = tasksInThisRing > 5 ? Math.PI * 1.8 : Math.PI * 1.2;
         const startAngle = angle - spreadAngle / 2;
-        const taskAngle = statusTasks.length === 1 
-          ? angle 
-          : startAngle + (i / (statusTasks.length - 1)) * spreadAngle;
+        
+        let taskAngle: number;
+        if (tasksInThisRing === 1) {
+          taskAngle = angle;
+        } else {
+          taskAngle = startAngle + (positionInRing / (tasksInThisRing - 1)) * spreadAngle;
+        }
+        
+        // Add slight offset for outer rings to avoid alignment
+        if (ringIndex > 0) {
+          taskAngle += (spreadAngle / tasksInThisRing) / 2;
+        }
         
         const taskX = x + Math.cos(taskAngle) * taskRadius;
         const taskY = y + Math.sin(taskAngle) * taskRadius;
@@ -124,7 +162,7 @@ export function MindMap() {
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(prev => Math.max(0.3, Math.min(2, prev * delta)));
+    setZoom(prev => Math.max(0.2, Math.min(5, prev * delta)));
   };
 
   const resetView = () => {
@@ -158,13 +196,13 @@ export function MindMap() {
         {/* Controls */}
         <div className="absolute top-4 right-4 z-20 flex gap-2">
           <button
-            onClick={() => setZoom(prev => Math.min(2, prev * 1.2))}
+            onClick={() => setZoom(prev => Math.min(5, prev * 1.2))}
             className="p-2.5 bg-white dark:bg-slate-800 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-105"
           >
             <ZoomIn size={18} className="text-slate-600 dark:text-slate-300" />
           </button>
           <button
-            onClick={() => setZoom(prev => Math.max(0.3, prev * 0.8))}
+            onClick={() => setZoom(prev => Math.max(0.2, prev * 0.8))}
             className="p-2.5 bg-white dark:bg-slate-800 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-105"
           >
             <ZoomOut size={18} className="text-slate-600 dark:text-slate-300" />
@@ -209,7 +247,7 @@ export function MindMap() {
         {/* Mind Map Canvas */}
         <div
           ref={containerRef}
-          className="w-full h-full cursor-grab active:cursor-grabbing"
+          className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden"
           style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -220,6 +258,8 @@ export function MindMap() {
           <svg
             width="100%"
             height="100%"
+            viewBox="0 0 1800 1400"
+            preserveAspectRatio="xMidYMid meet"
             style={{ 
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               transformOrigin: 'center center',
@@ -360,7 +400,12 @@ export function MindMap() {
               const priorityCfg = priorityConfig[task.priority];
               const category = task.categoryId ? getCategoryById(task.categoryId) : null;
               const isHovered = hoveredTask === task.id;
-              const nodeRadius = isHovered ? 38 : 32;
+              
+              // Dynamic node size based on total task count
+              const baseNodeSize = tasks.length > 30 ? 22 : tasks.length > 15 ? 26 : 32;
+              const nodeRadius = isHovered ? baseNodeSize + 6 : baseNodeSize;
+              const fontSize = tasks.length > 30 ? 7 : tasks.length > 15 ? 8 : 9;
+              const maxTitleLength = tasks.length > 30 ? 8 : tasks.length > 15 ? 10 : 12;
 
               return (
                 <g 
@@ -373,7 +418,7 @@ export function MindMap() {
                 >
                   {(task.priority === 'urgent' || task.priority === 'high') && (
                     <circle 
-                      r={nodeRadius + 8} 
+                      r={nodeRadius + 6} 
                       fill={priorityCfg.color} 
                       opacity="0.2"
                     >
@@ -385,27 +430,27 @@ export function MindMap() {
                     r={nodeRadius}
                     fill="white"
                     stroke={statusCfg.color}
-                    strokeWidth={isHovered ? 4 : 3}
+                    strokeWidth={isHovered ? 3 : 2}
                     className="dark:fill-slate-800"
                   />
                   
                   <circle
-                    cx={nodeRadius - 6}
-                    cy={-nodeRadius + 6}
-                    r="6"
+                    cx={nodeRadius - 4}
+                    cy={-nodeRadius + 4}
+                    r={tasks.length > 30 ? 4 : 5}
                     fill={priorityCfg.color}
                   />
                   
                   {task.status === 'done' && (
                     <>
-                      <circle cx={-nodeRadius + 6} cy={-nodeRadius + 6} r="8" fill="#22c55e" />
+                      <circle cx={-nodeRadius + 4} cy={-nodeRadius + 4} r={tasks.length > 30 ? 5 : 6} fill="#22c55e" />
                       <text
-                        x={-nodeRadius + 6}
-                        y={-nodeRadius + 7}
+                        x={-nodeRadius + 4}
+                        y={-nodeRadius + 5}
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill="white"
-                        fontSize="10"
+                        fontSize={tasks.length > 30 ? 7 : 8}
                         style={{ pointerEvents: 'none', userSelect: 'none' }}
                       >
                         ✓
@@ -413,12 +458,12 @@ export function MindMap() {
                     </>
                   )}
 
-                  {category && (
+                  {category && tasks.length <= 30 && (
                     <text
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      y="-8"
-                      fontSize="14"
+                      y="-6"
+                      fontSize={tasks.length > 15 ? 10 : 12}
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >
                       {category.icon}
@@ -428,21 +473,21 @@ export function MindMap() {
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    y={category ? 6 : 0}
-                    fontSize="9"
+                    y={category && tasks.length <= 30 ? 5 : 0}
+                    fontSize={fontSize}
                     fontWeight="500"
                     className="dark:fill-slate-100"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
                   >
-                    {task.title.length > 12 ? task.title.slice(0, 12) + '...' : task.title}
+                    {task.title.length > maxTitleLength ? task.title.slice(0, maxTitleLength) + '...' : task.title}
                   </text>
                   
-                  {task.estimatedMinutes && (
+                  {task.estimatedMinutes && tasks.length <= 30 && (
                     <text
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      y={category ? 18 : 14}
-                      fontSize="8"
+                      y={category ? 15 : 12}
+                      fontSize="7"
                       fill="#94a3b8"
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >
