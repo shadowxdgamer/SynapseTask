@@ -56,7 +56,7 @@ function App() {
             <AddTaskInput />
           </div>
           
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex overflow-hidden relative">
             {/* Main content area */}
             <div className="flex-1 overflow-auto p-4">
               {view === 'kanban' && <KanbanBoard />}
@@ -64,8 +64,10 @@ function App() {
               {view === 'mindmap' && <MindMap />}
             </div>
             
-            {/* Widgets panel */}
-            <div className={`${showWidgets ? 'w-80' : 'w-0'} transition-all duration-300 border-l border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden flex-shrink-0 z-50 relative`}>
+            {/* Widgets panel - slides over content */}
+            <div 
+              className={`absolute top-0 right-0 h-full w-80 transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-sm z-50 shadow-xl ${showWidgets ? 'translate-x-0' : 'translate-x-full'}`}
+            >
               <div className="w-80 p-4 space-y-4 overflow-y-auto h-full custom-scrollbar">
                 <PomodoroTimer />
                 <LofiPlayer />
@@ -76,8 +78,7 @@ function App() {
           {/* Widget toggle button */}
           <button
             onClick={() => setShowWidgets(!showWidgets)}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-l-lg p-2 shadow-md hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors z-10"
-            style={{ right: showWidgets ? '320px' : '0' }}
+            className={`absolute top-1/2 transform -translate-y-1/2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-l-lg p-2 shadow-md hover:bg-slate-50 dark:hover:bg-slate-600 transition-all duration-300 z-50 ${showWidgets ? 'right-80' : 'right-0'}`}
             title={showWidgets ? 'Hide widgets' : 'Show widgets'}
           >
             {showWidgets ? (

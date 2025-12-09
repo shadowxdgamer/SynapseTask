@@ -70,6 +70,18 @@ export function LofiPlayer() {
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Hidden YouTube iframe - always rendered when playing so music continues */}
+      {currentStream && isPlaying && getYouTubeId(currentStream.url) && (
+        <iframe
+          width="0"
+          height="0"
+          src={`https://www.youtube.com/embed/${getYouTubeId(currentStream.url)}?autoplay=1&loop=1`}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          className="absolute -left-[9999px]"
+          style={{ position: 'absolute', left: '-9999px' }}
+        />
+      )}
+
       {/* Header */}
       <div 
         className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white cursor-pointer"
@@ -169,22 +181,8 @@ export function LofiPlayer() {
             </button>
           </div>
 
-          {/* Hidden YouTube iframe for actual playback */}
-          {currentStream && isPlaying && getYouTubeId(currentStream.url) && (
-            <div className="mb-4 rounded-lg overflow-hidden">
-              <iframe
-                width="100%"
-                height="60"
-                src={`https://www.youtube.com/embed/${getYouTubeId(currentStream.url)}?autoplay=1&loop=1`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="border-0"
-              />
-            </div>
-          )}
-
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            💡 Tip: Click "Open in YouTube" to play music in the background while you work!
+            💡 Tip: Minimize this card and the music will keep playing!
           </p>
 
           {/* Add custom stream */}
