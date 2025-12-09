@@ -6,22 +6,21 @@ import { fetchModels, validateApiKey } from '../../services/openrouter';
 import type { OpenRouterModel } from '../../types';
 import { formatModelPrice, RECOMMENDED_MODELS } from '../../types/model';
 
-interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export function SettingsModal() {
   const {
     apiKey,
     selectedModelId,
     customModelId,
     enableReasoning,
+    settingsOpen: isOpen,
     setApiKey,
     setSelectedModel,
     setCustomModel,
     setEnableReasoning,
+    setSettingsOpen,
   } = useSettingsStore();
+  
+  const onClose = () => setSettingsOpen(false);
 
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localCustomModel, setLocalCustomModel] = useState(customModelId || '');

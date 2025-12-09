@@ -62,12 +62,22 @@ export function KanbanBoard() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Check if we're over a column
+    // Check if we're over a column directly
     const overColumn = columns.find((c) => c.id === overId);
     if (overColumn) {
       const task = getTaskById(activeWorkspaceId, activeId);
       if (task && task.status !== overColumn.id) {
         moveTask(activeWorkspaceId, activeId, overColumn.id);
+      }
+      return;
+    }
+    
+    // Check if we're over another task - get that task's column
+    const overTask = getTaskById(activeWorkspaceId, overId);
+    if (overTask) {
+      const activeTask = getTaskById(activeWorkspaceId, activeId);
+      if (activeTask && activeTask.status !== overTask.status) {
+        moveTask(activeWorkspaceId, activeId, overTask.status);
       }
     }
   };
@@ -85,6 +95,13 @@ export function KanbanBoard() {
     const overColumn = columns.find((c) => c.id === overId);
     if (overColumn) {
       moveTask(activeWorkspaceId, activeId, overColumn.id);
+      return;
+    }
+    
+    // If dropped on a task, move to that task's column
+    const overTask = getTaskById(activeWorkspaceId, overId);
+    if (overTask) {
+      moveTask(activeWorkspaceId, activeId, overTask.status);
     }
   };
 

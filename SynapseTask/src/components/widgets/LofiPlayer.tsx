@@ -169,6 +169,20 @@ export function LofiPlayer() {
             </button>
           </div>
 
+          {/* Hidden YouTube iframe for actual playback */}
+          {currentStream && isPlaying && getYouTubeId(currentStream.url) && (
+            <div className="mb-4 rounded-lg overflow-hidden">
+              <iframe
+                width="100%"
+                height="60"
+                src={`https://www.youtube.com/embed/${getYouTubeId(currentStream.url)}?autoplay=1&loop=1`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="border-0"
+              />
+            </div>
+          )}
+
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
             💡 Tip: Click "Open in YouTube" to play music in the background while you work!
           </p>

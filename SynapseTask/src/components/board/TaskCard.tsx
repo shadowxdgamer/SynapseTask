@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Trash2, GripVertical, Clock, ArrowUpCircle, ArrowRightCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
+import { Trash2, GripVertical, Clock, ArrowUpCircle, ArrowRightCircle, ArrowDownCircle, AlertCircle, Pencil } from 'lucide-react';
 import type { Task, TaskPriority } from '../../types';
 import { Badge } from '../ui';
 import { useCategoryStore } from '../../stores';
@@ -106,20 +106,27 @@ export function TaskCard({ task, onDelete, onEdit }: TaskCardProps) {
             )}
           </div>
 
-          {/* Delete button */}
-          <button
-            onClick={() => onDelete(task.id)}
-            className="p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            <Trash2 size={14} />
-          </button>
+          {/* Action buttons */}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <button
+              onClick={() => onEdit?.(task)}
+              className="p-1 text-slate-400 hover:text-indigo-500 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+              title="Edit task"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => onDelete(task.id)}
+              className="p-1 text-slate-400 hover:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+              title="Delete task"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
 
         {/* Title */}
-        <h4
-          onClick={() => onEdit?.(task)}
-          className="font-medium text-slate-800 dark:text-slate-100 text-sm leading-snug mb-1 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400"
-        >
+        <h4 className="font-medium text-slate-800 dark:text-slate-100 text-sm leading-snug mb-1">
           {task.title}
         </h4>
 
@@ -131,10 +138,10 @@ export function TaskCard({ task, onDelete, onEdit }: TaskCardProps) {
         )}
 
         {/* Footer: Time estimate */}
-        {task.timeEstimate && (
+        {task.estimatedMinutes && (
           <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
             <Clock size={12} />
-            <span>{task.timeEstimate}</span>
+            <span>{task.estimatedMinutes < 60 ? `${task.estimatedMinutes}m` : `${Math.floor(task.estimatedMinutes / 60)}h${task.estimatedMinutes % 60 > 0 ? ` ${task.estimatedMinutes % 60}m` : ''}`}</span>
           </div>
         )}
       </div>

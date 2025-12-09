@@ -29,10 +29,19 @@ function App() {
     }
   }, []);
 
-  // Apply theme to document
+  // Apply theme on initial load and when theme changes
   useEffect(() => {
-    const effectiveTheme = getEffectiveTheme();
-    document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
+    const applyTheme = () => {
+      const effectiveTheme = getEffectiveTheme();
+      document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
+    };
+    
+    applyTheme();
+    
+    // Listen for system theme changes if using 'system' theme
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', applyTheme);
+    return () => mediaQuery.removeEventListener('change', applyTheme);
   }, [theme, getEffectiveTheme]);
 
   return (
@@ -56,7 +65,7 @@ function App() {
             </div>
             
             {/* Widgets panel */}
-            <div className={`${showWidgets ? 'w-80' : 'w-0'} transition-all duration-300 border-l border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden flex-shrink-0`}>
+            <div className={`${showWidgets ? 'w-80' : 'w-0'} transition-all duration-300 border-l border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden flex-shrink-0 z-50 relative`}>
               <div className="w-80 p-4 space-y-4 overflow-y-auto h-full custom-scrollbar">
                 <PomodoroTimer />
                 <LofiPlayer />
