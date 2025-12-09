@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Key, Cpu, Check, ExternalLink, AlertCircle } from 'lucide-react';
-import { Modal, Input, Button, Select } from '../ui';
-import { useSettingsStore } from '../../stores';
+import { Key, Cpu, Check, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
+import { Modal, Input, Button } from '../ui';
+import { useSettingsStore, useModelCacheStore } from '../../stores';
 import { fetchModels, validateApiKey } from '../../services/openrouter';
 import type { OpenRouterModel } from '../../types';
-import { formatModelPrice, RECOMMENDED_MODELS } from '../../types/model';
+import { RECOMMENDED_MODELS } from '../../types/model';
+import { ModelAutocomplete } from './ModelAutocomplete';
 
 export function SettingsModal() {
   const {
@@ -20,37 +21,56 @@ export function SettingsModal() {
     setSettingsOpen,
   } = useSettingsStore();
   
+  const {
+    models: cachedModels,
+    isLoading: isLoadingModels,
+    lastFetched,
+    shouldRefetch,
+    setModels: setCachedModels,
+    setLoading: setLoadingModels,
+    setError: setModelsError,
+    clearCache,
+  } = useModelCacheStore();
+  
   const onClose = () => setSettingsOpen(false);
 
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localCustomModel, setLocalCustomModel] = useState(customModelId || '');
-  const [models, setModels] = useState<OpenRouterModel[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
+
+  // Filter models to text-only
+  const textModels = cachedModels
+    .filter((m) => m.architecture?.output_modalities?.includes('text'))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   useEffect(() => {
     if (isOpen) {
       setLocalApiKey(apiKey);
       setLocalCustomModel(customModelId || '');
-      loadModels();
+      // Only fetch if cache is stale or empty
+      if (shouldRefetch()) {
+        loadModels();
+      }
     }
   }, [isOpen, apiKey, customModelId]);
 
-  const loadModels = async () => {
-    setIsLoadingModels(true);
+  const loadModels = async (forceRefresh = false) => {
+    if (!forceRefresh && !shouldRefetch()) return;
+    
+    setLoadingModels(true);
     try {
       const fetchedModels = await fetchModels();
-      // Filter to text models only and sort by name
-      const textModels = fetchedModels
-        .filter((m) => m.architecture?.output_modalities?.includes('text'))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      setModels(textModels);
+      setCachedModels(fetchedModels);
     } catch (error) {
       console.error('Failed to load models:', error);
-    } finally {
-      setIsLoadingModels(false);
+      setModelsError('Failed to load models');
     }
+  };
+
+  const handleRefreshModels = () => {
+    clearCache();
+    loadModels(true);
   };
 
   const handleValidateKey = async () => {
@@ -73,13 +93,17 @@ export function SettingsModal() {
     onClose();
   };
 
-  const modelOptions = [
-    { value: '', label: isLoadingModels ? 'Loading models...' : 'Select a model' },
-    ...models.slice(0, 50).map((m) => ({
-      value: m.id,
-      label: `${m.name} (${formatModelPrice(m.pricing.prompt)})`,
-    })),
-  ];
+  // Format time ago for cache display
+  const formatTimeAgo = (timestamp: number): string => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="lg">
@@ -138,21 +162,32 @@ export function SettingsModal() {
 
         {/* Model Selection */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            <Cpu size={18} />
-            AI Model
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <Cpu size={18} />
+              AI Model
+            </h3>
+            <button
+              onClick={handleRefreshModels}
+              disabled={isLoadingModels}
+              className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors disabled:opacity-50"
+              title="Refresh model list"
+            >
+              <RefreshCw size={12} className={isLoadingModels ? 'animate-spin' : ''} />
+              {lastFetched ? `Cached ${formatTimeAgo(lastFetched)}` : 'Refresh'}
+            </button>
+          </div>
           
-          <Select
-            label="Select from list"
-            value={selectedModelId}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            options={modelOptions}
-            disabled={isLoadingModels}
+          <ModelAutocomplete
+            models={textModels}
+            selectedModelId={selectedModelId}
+            onSelect={setSelectedModel}
+            isLoading={isLoadingModels}
+            placeholder="Type to search models..."
           />
 
           <div className="text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-medium">Recommended:</span>{' '}
+            <span className="font-medium">Quick select:</span>{' '}
             <button
               onClick={() => setSelectedModel(RECOMMENDED_MODELS.default)}
               className="text-indigo-600 dark:text-indigo-400 hover:underline"

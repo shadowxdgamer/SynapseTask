@@ -95,24 +95,40 @@ export function toonToTasks(toon: string): Partial<Task>[] {
 }
 
 /**
- * Check if a string is valid TOON format
+ * Check if a line is a valid TOON task line
+ */
+function isToonLine(line: string): boolean {
+  const trimmed = line.trim();
+  // Must have t: (title) and at least one | separator
+  return trimmed.includes('t:') && trimmed.includes('|') && trimmed.includes(':');
+}
+
+/**
+ * Extract TOON lines from mixed content (handles AI preamble/postamble)
+ */
+function extractToonLines(content: string): string[] {
+  const lines = content.split('\n');
+  return lines.filter(isToonLine);
+}
+
+/**
+ * Check if a string contains valid TOON format
  */
 export function isValidToon(str: string): boolean {
-  const lines = str.trim().split('\n');
-  if (lines.length === 0) return false;
-
-  // Check if most lines have the TOON structure
-  const validLines = lines.filter(
-    (line) => line.includes('|') && line.includes(':') && line.includes('t:')
-  );
-
-  return validLines.length >= lines.length * 0.5;
+  const toonLines = extractToonLines(str);
+  return toonLines.length > 0;
 }
 
 /**
  * Parse AI response - handles both TOON and JSON fallback
+ * More robust: extracts TOON lines from mixed content
  */
 export function parseAITaskResponse(content: string): Partial<Task>[] {
+  if (!content || !content.trim()) {
+    console.error('Empty AI response received');
+    return [];
+  }
+
   // Clean up the response
   const cleaned = content
     .replace(/```toon/gi, '')
@@ -120,29 +136,53 @@ export function parseAITaskResponse(content: string): Partial<Task>[] {
     .replace(/```/g, '')
     .trim();
 
-  // Try TOON first
-  if (isValidToon(cleaned)) {
-    return toonToTasks(cleaned);
+  // Extract TOON lines (works even with explanatory text before/after)
+  const toonLines = extractToonLines(cleaned);
+  
+  if (toonLines.length > 0) {
+    // Parse only the TOON lines
+    return toonToTasks(toonLines.join('\n'));
   }
 
-  // Fallback to JSON
+  // Fallback: Try to find and parse JSON
   try {
-    const json = JSON.parse(cleaned);
-    const tasks = json.tasks || json.updatedTasks || (Array.isArray(json) ? json : []);
-    
-    return tasks.map((t: Record<string, unknown>) => ({
-      id: t.id as string || crypto.randomUUID(),
-      title: t.title as string || '',
-      description: t.description as string || '',
-      status: (t.status as TaskStatus) || 'todo',
-      priority: (t.priority as TaskPriority) || 'medium',
-      categoryId: t.categoryId as string || t.category as string || null,
-      timeEstimate: t.timeEstimate as string || null,
-    }));
+    // Try to extract JSON from the content (handle wrapped JSON)
+    const jsonMatch = cleaned.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const json = JSON.parse(jsonMatch[0]);
+      const tasks = json.tasks || json.updatedTasks || (Array.isArray(json) ? json : [json]);
+      
+      return tasks.map((t: Record<string, unknown>) => ({
+        id: t.id as string || crypto.randomUUID(),
+        title: t.title as string || '',
+        description: t.description as string || '',
+        status: (t.status as TaskStatus) || 'todo',
+        priority: (t.priority as TaskPriority) || 'medium',
+        categoryId: t.categoryId as string || t.category as string || null,
+        timeEstimate: t.timeEstimate as string || null,
+      }));
+    }
   } catch {
-    console.error('Failed to parse AI response:', cleaned);
-    return [];
+    // JSON parsing failed
   }
+
+  // Last resort: Try to create a single task from plain text
+  const plainText = cleaned.split('\n')[0]?.trim();
+  if (plainText && plainText.length > 0 && plainText.length < 200) {
+    console.warn('Falling back to plain text task creation:', plainText);
+    return [{
+      id: crypto.randomUUID(),
+      title: plainText,
+      description: '',
+      status: 'todo',
+      priority: 'medium',
+      categoryId: null,
+      timeEstimate: null,
+    }];
+  }
+
+  console.error('Failed to parse AI response:', cleaned.substring(0, 500));
+  return [];
 }
 
 /**
