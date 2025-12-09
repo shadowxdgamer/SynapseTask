@@ -55,14 +55,6 @@ export function MindMap() {
     const centerX = 900;
     const centerY = 700;
     
-    // Calculate total tasks to determine layout strategy
-    const totalTasks = tasks.length;
-    const maxTasksPerStatus = Math.max(
-      tasksByStatus.todo.length,
-      tasksByStatus.inprogress.length,
-      tasksByStatus.done.length
-    );
-    
     // Base radius for status hubs from center
     const baseStatusRadius = 280;
     
@@ -101,7 +93,6 @@ export function MindMap() {
 
       // For many tasks, use multiple rings with more spacing
       const maxTasksPerRing = 10;
-      const ringCount = Math.ceil(taskCount / maxTasksPerRing);
       const baseRadius = 120; // Increased base radius for more spacing from status hub
       const ringSpacing = 90; // Increased ring spacing
       

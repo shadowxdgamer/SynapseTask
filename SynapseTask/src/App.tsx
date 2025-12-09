@@ -8,26 +8,12 @@ import { MindMap } from './components/mindmap/MindMap';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { PomodoroTimer, LofiPlayer } from './components/widgets';
 import { useSettingsStore } from './stores/settingsStore';
-import { useCategoryStore } from './stores/categoryStore';
-import { useWorkspaceStore } from './stores/workspaceStore';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import './index.css';
 
 function App() {
   const { theme, view, getEffectiveTheme } = useSettingsStore();
-  const { categories, initializeDefaultCategories } = useCategoryStore();
-  const { workspaces, initializeDefaultWorkspace } = useWorkspaceStore();
   const [showWidgets, setShowWidgets] = useState(true);
-
-  // Initialize defaults on first load
-  useEffect(() => {
-    if (categories.length === 0) {
-      initializeDefaultCategories();
-    }
-    if (workspaces.length === 0) {
-      initializeDefaultWorkspace();
-    }
-  }, []);
 
   // Apply theme on initial load and when theme changes
   useEffect(() => {

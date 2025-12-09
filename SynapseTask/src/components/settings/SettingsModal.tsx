@@ -3,7 +3,6 @@ import { Key, Cpu, Check, ExternalLink, AlertCircle, RefreshCw } from 'lucide-re
 import { Modal, Input, Button } from '../ui';
 import { useSettingsStore, useModelCacheStore } from '../../stores';
 import { fetchModels, validateApiKey } from '../../services/openrouter';
-import type { OpenRouterModel } from '../../types';
 import { RECOMMENDED_MODELS } from '../../types/model';
 import { ModelAutocomplete } from './ModelAutocomplete';
 
