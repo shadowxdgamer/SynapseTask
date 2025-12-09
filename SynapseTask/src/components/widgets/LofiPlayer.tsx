@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -8,10 +8,21 @@ import {
   ChevronDown,
   ChevronUp,
   Music,
-  ExternalLink
+  ExternalLink,
+  Volume2,
+  VolumeX,
+  Settings
 } from 'lucide-react';
 import { useLofiStore } from '../../stores';
 import { Input, Button } from '../ui';
+
+// Quality options for data consumption
+const QUALITY_OPTIONS = [
+  { value: 'small', label: '240p', description: 'Low data' },
+  { value: 'medium', label: '360p', description: 'Medium' },
+  { value: 'large', label: '480p', description: 'Standard' },
+  { value: 'hd720', label: '720p', description: 'HD' },
+];
 
 export function LofiPlayer() {
   const {
@@ -19,24 +30,156 @@ export function LofiPlayer() {
     currentStreamId,
     isPlaying,
     isMinimized,
+    volume,
     addStream,
     removeStream,
     setCurrentStream,
     togglePlay,
     toggleMinimized,
+    setVolume,
   } = useLofiStore();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newStreamName, setNewStreamName] = useState('');
   const [newStreamUrl, setNewStreamUrl] = useState('');
-
+  const [quality, setQuality] = useState('small');
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [prevVolume, setPrevVolume] = useState(50);
+  const [playerReady, setPlayerReady] = useState(false);
+  
+  const playerRef = useRef<YT.Player | null>(null);
+  
   const currentStream = streams.find(s => s.id === currentStreamId);
 
   // Extract YouTube video ID from URL
-  const getYouTubeId = (url: string): string | null => {
+  const getYouTubeId = useCallback((url: string): string | null => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
     return match ? match[1] : null;
-  };
+  }, []);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    if (window.YT && window.YT.Player) {
+      setPlayerReady(true);
+      return;
+    }
+
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = () => {
+      setPlayerReady(true);
+    };
+  }, []);
+
+  // Initialize/update YouTube player when stream changes
+  useEffect(() => {
+    if (!playerReady || !currentStream) return;
+    
+    const videoId = getYouTubeId(currentStream.url);
+    if (!videoId) return;
+
+    // Destroy existing player
+    if (playerRef.current) {
+      try {
+        playerRef.current.destroy();
+      } catch (e) {
+        // Ignore errors
+      }
+      playerRef.current = null;
+    }
+
+    // Create new player
+    playerRef.current = new window.YT.Player('lofi-player-container', {
+      height: '1',
+      width: '1',
+      videoId: videoId,
+      playerVars: {
+        autoplay: isPlaying ? 1 : 0,
+        loop: 1,
+        playlist: videoId,
+        controls: 0,
+        fs: 0,
+        modestbranding: 1,
+        rel: 0,
+      },
+      events: {
+        onReady: (event: YT.PlayerEvent) => {
+          event.target.setVolume(isMuted ? 0 : volume);
+          try {
+            event.target.setPlaybackQuality(quality as YT.SuggestedVideoQuality);
+          } catch (e) {
+            // Quality setting may fail on some videos
+          }
+          if (isPlaying) {
+            event.target.playVideo();
+          }
+        },
+        onStateChange: (event: YT.PlayerEvent) => {
+          // YT.PlayerState.ENDED = 0
+          if (event.data === 0) {
+            // Restart the video for looping
+            playerRef.current?.playVideo();
+          }
+        },
+      },
+    });
+  }, [playerReady, currentStreamId, currentStream?.url, getYouTubeId]);
+
+  // Sync volume with player
+  useEffect(() => {
+    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+      playerRef.current.setVolume(isMuted ? 0 : volume);
+    }
+  }, [volume, isMuted]);
+
+  // Sync play state with player
+  useEffect(() => {
+    if (!playerRef.current) return;
+    
+    try {
+      if (isPlaying) {
+        playerRef.current.playVideo?.();
+      } else {
+        playerRef.current.pauseVideo?.();
+      }
+    } catch (e) {
+      // Ignore errors if player not ready
+    }
+  }, [isPlaying]);
+
+  // Sync quality with player
+  useEffect(() => {
+    if (playerRef.current && typeof playerRef.current.setPlaybackQuality === 'function') {
+      try {
+        playerRef.current.setPlaybackQuality(quality as YT.SuggestedVideoQuality);
+      } catch (e) {
+        // Quality setting may fail
+      }
+    }
+  }, [quality]);
+
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseInt(e.target.value);
+    setVolume(newVolume);
+    if (newVolume > 0 && isMuted) {
+      setIsMuted(false);
+    }
+  }, [setVolume, isMuted]);
+
+  const toggleMute = useCallback(() => {
+    if (isMuted) {
+      setVolume(prevVolume);
+      setIsMuted(false);
+    } else {
+      setPrevVolume(volume);
+      setVolume(0);
+      setIsMuted(true);
+    }
+  }, [isMuted, volume, prevVolume, setVolume]);
 
   const handleAddStream = () => {
     if (newStreamName.trim() && newStreamUrl.trim()) {
@@ -94,28 +237,72 @@ export function LofiPlayer() {
         </div>
       </div>
 
-      {/* Single YouTube iframe - always rendered when playing, visibility changes based on minimized state */}
-      {currentStream && isPlaying && getYouTubeId(currentStream.url) && (
-        <div 
-          className={`transition-all duration-300 ${
-            isMinimized 
-              ? 'h-0 w-0 overflow-hidden absolute -left-[9999px]' 
-              : 'mx-4 mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700'
-          }`}
-        >
-          <iframe
-            width="100%"
-            height={isMinimized ? '0' : '120'}
-            src={`https://www.youtube.com/embed/${getYouTubeId(currentStream.url)}?autoplay=1&loop=1&controls=1&modestbranding=1&rel=0&vq=small`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            className="border-0"
-          />
-        </div>
-      )}
+      {/* Hidden YouTube player container (audio only) */}
+      <div id="lofi-player-container" className="absolute -left-[9999px] h-0 w-0 overflow-hidden" />
 
       {/* Expanded content */}
       {!isMinimized && (
-        <div className="p-4 pt-2">
+        <div className="p-4">
+          {/* Volume & Quality Controls */}
+          <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-3">
+            {/* Volume Control */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleMute}
+                className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-slate-600 dark:text-slate-300"
+              >
+                {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="flex-1 h-2 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-violet-500"
+              />
+              <span className="text-xs text-slate-500 dark:text-slate-400 w-8 text-right">
+                {isMuted ? 0 : volume}%
+              </span>
+            </div>
+
+            {/* Quality Control */}
+            <div className="relative">
+              <button
+                onClick={() => setShowQualityMenu(!showQualityMenu)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-slate-600 rounded-lg border border-slate-200 dark:border-slate-500 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-500 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Settings size={14} />
+                  <span>Quality: {QUALITY_OPTIONS.find(q => q.value === quality)?.label}</span>
+                </div>
+                <ChevronDown size={14} className={`transition-transform ${showQualityMenu ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showQualityMenu && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 shadow-lg overflow-hidden z-10">
+                  {QUALITY_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setQuality(option.value);
+                        setShowQualityMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                        quality === option.value
+                          ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      <span className="text-xs text-slate-400">{option.description}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Stream selector */}
           <div className="space-y-2 mb-4 max-h-40 overflow-y-auto custom-scrollbar">
             {streams.map((stream) => (
